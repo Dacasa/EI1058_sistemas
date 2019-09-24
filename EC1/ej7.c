@@ -2,6 +2,7 @@
 #include <stdlib.h>
 int main(int argc, char *argv[]){
     int tubo[2], status, i, dato, res, pid;
+    
     pipe(tubo);
     pid=fork();
     if (pid != 0){  
