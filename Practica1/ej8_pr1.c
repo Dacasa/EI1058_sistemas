@@ -23,10 +23,9 @@ int main(int argc, char *argv[]){
         perror("Error en la ejecucion del execvp\n");
         exit(-1);
     }
-    //proceso padre
-    //mirar transparencias para arreglar el error
     pid = wait(&estado);
     estado &= 0x0000ff00;
     estado = estado >> 8;
+    printf("Hijo %d finalizado con código= %d\n", pid, estado);
     exit(0);
 }
