@@ -11,7 +11,7 @@ int main(int argc, char *argv[]){
         perror("Numero de argumentos incorrectos\n");
         exit(-1);
     }
-
+    int pid, estado;
     if(fork()==0){ //proceso hijo
         int fd = open(argv[1], O_CREAT|O_APPEND|O_WRONLY, 0644);
         close(1); dup(fd); close(fd);
@@ -24,6 +24,9 @@ int main(int argc, char *argv[]){
         exit(-1);
     }
     //proceso padre
-    wait(NULL);
+    //mirar transparencias para arreglar el error
+    pid = wait(&estado);
+    estado &= 0x0000ff00;
+    estado = estado >> 8;
     exit(0);
 }
