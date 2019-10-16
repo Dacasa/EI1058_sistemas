@@ -1,3 +1,5 @@
+// David Castellano Sanchez
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -64,7 +66,8 @@ int main( int argc, char *argv[] ) {
 int arrange(char *buffer) {
 
     int i = 0, j = 0;
-
+    while(buffer[i]) printf("%d-",buffer[i++]);
+    printf("%d-",buffer[i]);
     while (buffer[i]) {
         while (buffer[i] == ESPACIO) {
             i++;
