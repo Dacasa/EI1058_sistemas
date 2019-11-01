@@ -7,11 +7,11 @@
 #include <sys/wait.h>
 
 
-#define PROMPT		"\n=> "
-#define ESPACIO		' '
+#define PROMPT		    "\n=> "
+#define ESPACIO		    ' '
 
-#define MAX_BUF		1024
-#define	MAX_ARGS	32
+#define MAX_BUF		    1024
+#define	MAX_ARGS	    32
 #define MAX_COMANDOS    10
 
 struct comando{
@@ -20,7 +20,6 @@ struct comando{
 };
 
 
-#define DEBUG
 
 //Functions
 int arrange(char *buffer) ;
@@ -29,36 +28,35 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) ;
 
 int main( int argc, char *argv[] ) {
 
-#ifdef DEBUG
-    int i;
-#endif
+    int i, num_comandos, tub[2], pid;
 
     char buffer[MAX_BUF], *args[MAX_ARGS];
     struct comando lista_comandos[MAX_COMANDOS];
 
-    puts("\nEjemplo sencillo de Minishell\n");
+    puts("\nMinishell\n");
     while (1) {
         printf(PROMPT);
         if (fgets(buffer,  MAX_BUF, stdin) == NULL) 
             continue;
-        arrange(buffer);
-#ifdef DEBUG
-        printf("Entrada: #%s#\n", buffer);
-        i = 0;
-#endif
-        makeargs(buffer, args);
-#ifdef DEBUG
-        while (args[i]) {
-            printf("\nargs[%d] (dir. %08lu) = #%s#", i, (unsigned long) (args[i]), args[i]);
-            i++;
-        }
-#endif
-        if (fork()) {
+
+        
+        num_comandos = desglosar_tub(buffer, lista_comandos);
+        if (fork()==0){
+            for (i=0 ; i<num_comandos-1 ; i++) {
+                pipe(tub);
+                if (fork()!=0){     //padre
+                    close(0); dup(tub[0]); close(tub[0]); close(tub[1]);    //leer de tuberia
+                    int c = num_comandos -1 -i;
+                    execvp(lista_comandos[c].argv[0], lista_comandos[c].argv);
+                } else {            //hijo
+                    close(1); dup(tub[1]); close(tub[0]); close(tub[1]);    //escribir en tub
+                    if(i==num_comandos-2){
+                        execvp(lista_comandos[0].argv[0], lista_comandos[0].argv);
+                    }
+                }
+            }
+        } else {  //el proceso principal no ejecuta ningun exec
             wait(NULL);
-        } else {
-            execvp(args[0], args);
-            perror("Error en exec");
-            exit(-1);
         }
     }// while(1) 
 }//main
@@ -66,8 +64,6 @@ int main( int argc, char *argv[] ) {
 int arrange(char *buffer) {
 
     int i = 0, j = 0;
-    while(buffer[i]) printf("%d-",buffer[i++]);
-    printf("%d-",buffer[i]);
     while (buffer[i]) {
         while (buffer[i] == ESPACIO) {
             i++;
@@ -105,10 +101,6 @@ int makeargs(char *buffer, char *args[]) {
 }
 
 int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
-/* Desglosa una secuencia de comandos enlazados mediante tuberías 
-   (y almacenada a partir de la posición "buffer") en los diferentes
-   comandos simples de ésta, alacenando cada uno de ellos en una estructura 
-   de tipo "argc-argv" del vector "lista_comandos"  */
 
     char *p1, *p2;
     int i,j,n;
@@ -117,18 +109,19 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
     p1=buffer;
     i=0;
 
-#ifdef DEBUG
-    printf("\nLinea de comandos: #%s#\n", buffer);
-#endif
-
     n=arrange(p1);
+    printf("Entrada: #%s#\n", buffer);//borrar
+
     if (n==1) 
         return(0); /* No hay comandos, sino blancos o <CR> */
+
     while (p2=strchr(p1,'|')) {
-        if (*(p2-1)==ESPACIO) 
+        if (*(p2-1)==ESPACIO) {
             *(p2-1)='\0'; 
-        else 
+        } else {
             *p2='\0';
+        }
+       
         p2++;
         lista_comandos[ncomandos].nargs = makeargs(p1,lista_comandos[ncomandos].argv);
         ncomandos++;
@@ -143,16 +136,16 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
     lista_comandos[ncomandos].nargs = makeargs(p1,lista_comandos[ncomandos].argv);
     ncomandos++; 
 
-#ifdef DEBUG
+    
     for (i=0; i<ncomandos; i++) {
         printf("Comando %d (%d argumentos):\n",i,lista_comandos[i].nargs);
         j=0;
         while(lista_comandos[i].argv[j]) {
-            printf("comando[%d].argv[%d] (dir. %08lu) = #%s#\n", i, j,(unsigned long) (lista_comandos[i].argv[j]), lista_comandos[i].argv[j]);
+            printf("    comando[%d].argv[%d] (dir. %08lu) = #%s#\n", i, j,(unsigned long) (lista_comandos[i].argv[j]), lista_comandos[i].argv[j]);
             j++;
         }
     }
-#endif
+    
     return(ncomandos);  /* Numero de componentes del vector lista_comandos 
                           (empezando a contar desde 1) */
 }
