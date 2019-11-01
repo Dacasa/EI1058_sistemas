@@ -31,12 +31,13 @@ void ejecuta_tub(int n_c, struct comando lista_comandos[]);
 void redireccion_entrada(struct comando *comando);
 void redireccion_salida_error (struct comando *comando);
 void prompt(char *path, char *user);
-
+int contains_char(char *st, char c);
+void split_equals(char *buffer, char *s[]);
 
 
 int main( int argc, char *argv[] ) {
 
-    int num_comandos;
+    int i, num_comandos;
 
     char buffer[MAX_BUF], *args[MAX_ARGS];
     struct comando lista_comandos[MAX_COMANDOS];
@@ -46,7 +47,7 @@ int main( int argc, char *argv[] ) {
     getlogin_r(user, sizeof(user));
 
 
-    puts("\nMinishell\n");
+    puts("\nMinishell");
     while (1) {
         prompt(path, user);
         if (fgets(buffer,  MAX_BUF, stdin) == NULL) 
@@ -59,7 +60,15 @@ int main( int argc, char *argv[] ) {
             if ( !strcmp(lista_comandos[0].argv[0], "cd") ) {    //si se trata de un cd
                 chdir(lista_comandos[0].argv[1]);
                 getcwd(path, sizeof(path));
+            } else if (contains_char(lista_comandos[0].argv[0], '=')){      //añadir variable
+                char *var[2];
+                split_equals(lista_comandos[0].argv[0],var);
+                setenv(var[0], var[1], 1);
+            } else if (!strcmp(lista_comandos[0].argv[0], "exit")){      //cerrar minishell
+                printf("DONE\n");
+                exit(0);
             } else {
+
                 ejecuta_simple(&lista_comandos[0]);     //comando simple
             }
         } else {
@@ -68,6 +77,21 @@ int main( int argc, char *argv[] ) {
 
     }// while(1) 
 }//main
+
+void comprueba_variables(){
+    
+}
+
+int contains_char(char *st, char c){
+    int i=0;
+    while(st[i]){
+        if(st[i]==c){ 
+            return 1;
+        }
+        i++;
+    }
+    return 0;
+}
 
 void prompt(char *path, char *user){
     printf("\n%s@%s=>", user, path);
@@ -193,6 +217,19 @@ int arrange(char *buffer) {
  return(j);
 }
 
+void split_equals(char *buffer, char *s[]){
+    int i = 0;
+    char *puntero;
+
+    puntero = buffer;
+    s[i++] = puntero;
+
+    while(puntero = strchr(puntero, '=')) {
+        *puntero++ = '\0';
+        s[i++] = puntero;
+    }
+}
+
 int makeargs(char *buffer, char *args[]) {
 
     int i = 0;
@@ -251,6 +288,10 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
         j=0;
         while(lista_comandos[i].argv[j]) {
             printf("    comando[%d].argv[%d] (dir. %08lu) = #%s#\n", i, j,(unsigned long) (lista_comandos[i].argv[j]), lista_comandos[i].argv[j]);
+            if (contains_char(lista_comandos[i].argv[j], '$')) {   
+                char *var = getenv(lista_comandos[i].argv[j]+1); 
+                lista_comandos[i].argv[j] = var;
+            }
             j++;
         }
     }
