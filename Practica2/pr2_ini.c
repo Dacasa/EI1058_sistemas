@@ -1,6 +1,7 @@
 // David Castellano Sanchez
 
 #include <stdio.h>
+#include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -25,10 +26,15 @@ struct comando{
 int arrange(char *buffer) ;
 int makeargs(char *buffer, char *args[]) ;
 int desglosar_tub (char *buffer, struct comando lista_comandos[]) ;
+void ejecuta_simple(struct comando lista_comandos[]);
+void ejecuta_tub(int n_c, struct comando lista_comandos[]);
+void redireccion_entrada(struct comando *comando);
+void redireccion_salida_error (struct comando *comando);
+
 
 int main( int argc, char *argv[] ) {
 
-    int i, num_comandos, tub[2], pid;
+    int num_comandos;
 
     char buffer[MAX_BUF], *args[MAX_ARGS];
     struct comando lista_comandos[MAX_COMANDOS];
@@ -41,25 +47,113 @@ int main( int argc, char *argv[] ) {
 
         
         num_comandos = desglosar_tub(buffer, lista_comandos);
-        if (fork()==0){
-            for (i=0 ; i<num_comandos-1 ; i++) {
-                pipe(tub);
-                if (fork()!=0){     //padre
-                    close(0); dup(tub[0]); close(tub[0]); close(tub[1]);    //leer de tuberia
-                    int c = num_comandos -1 -i;
-                    execvp(lista_comandos[c].argv[0], lista_comandos[c].argv);
-                } else {            //hijo
-                    close(1); dup(tub[1]); close(tub[0]); close(tub[1]);    //escribir en tub
-                    if(i==num_comandos-2){
-                        execvp(lista_comandos[0].argv[0], lista_comandos[0].argv);
-                    }
-                }
-            }
-        } else {  //el proceso principal no ejecuta ningun exec
-            wait(NULL);
+        printf("\n");
+        if (num_comandos==1){
+            ejecuta_simple(lista_comandos);
+        } else {
+            ejecuta_tub(num_comandos, lista_comandos);
         }
+
     }// while(1) 
 }//main
+
+void ejecuta_simple(struct comando lista_comandos[]) {
+    if(fork()==0){
+
+        redireccion_entrada(&lista_comandos[0]);
+        redireccion_salida_error (&lista_comandos[0]);
+        
+        execvp(lista_comandos[0].argv[0], lista_comandos[0].argv);
+        perror("Error en exec");
+        exit(-1);
+    } else{
+        wait(NULL);
+
+    }
+}
+
+void ejecuta_tub(int n_c, struct comando lista_comandos[]) {
+    int i, tub[2];
+    if (fork()==0){
+        for (i=0 ; i<n_c-1 ; i++) {
+            pipe(tub);
+            if (fork()!=0){     //padre
+                close(0); dup(tub[0]); close(tub[0]); close(tub[1]);    //leer de tuberia
+                int c = n_c -1 -i;
+                if(c == n_c-1){ //ultimo comando
+                    redireccion_salida_error (&lista_comandos[c]);
+                }
+                execvp(lista_comandos[c].argv[0], lista_comandos[c].argv);
+                perror("Error en exec");
+                exit(-1);
+            } else {            //hijo
+                close(1); dup(tub[1]); close(tub[0]); close(tub[1]);    //escribir en tub
+                if( i == n_c-2 ) {
+                    redireccion_entrada(&lista_comandos[0]);
+                    execvp(lista_comandos[0].argv[0], lista_comandos[0].argv);
+                    perror("Error en exec");
+                    exit(-1);
+                }
+            }
+        }
+    } else {  //el proceso principal no ejecuta ningun exec
+        wait(NULL);
+    }
+}
+
+void redireccion_entrada(struct comando *comando) {
+    int i;
+    
+    for (i=1 ; i< comando->nargs ; i++){
+        if ( !strcmp(comando->argv[i], "<") ) {
+            int fd = open(comando->argv[i+1], O_RDONLY);
+            close(0); dup(fd); close (fd);
+            comando->argv[i] = NULL;
+            comando->argv[i+1] = NULL;
+            break;
+        }
+    }
+}
+
+void redireccion_salida_error (struct comando *comando) {
+    int i, fd;
+    for (i=1 ; i< comando->nargs ; i++){
+        if (comando->argv[i] == NULL) continue;
+
+        if (!strcmp(comando->argv[i],">" ) ) {
+            fd = open(comando->argv[i+1],O_CREAT|O_TRUNC|O_WRONLY, 0644);
+            close(1); dup(fd); close(fd);
+            comando->argv[i] = NULL;
+            comando->argv[i+1] = NULL;
+            i++;
+            continue;
+        }
+        if (!strcmp(comando->argv[i],">>" ) ) {
+            fd = open(comando->argv[i+1],O_CREAT|O_APPEND|O_WRONLY, 0644);
+            close(1); dup(fd); close(fd);
+            comando->argv[i] = NULL;
+            comando->argv[i+1] = NULL;
+            i++;
+            continue;
+        }
+        if (!strcmp(comando->argv[i],"2>" ) ) {
+            fd = open(comando->argv[i+1],O_CREAT|O_TRUNC|O_WRONLY, 0644);
+            close(2); dup(fd); close(fd);
+            comando->argv[i] = NULL;
+            comando->argv[i+1] = NULL;
+            i++;
+            continue;
+        }
+        if (!strcmp(comando->argv[i],"2>>" ) ) {
+            fd = open(comando->argv[i+1],O_CREAT|O_APPEND|O_WRONLY, 0644);
+            close(2); dup(fd); close(fd);
+            comando->argv[i] = NULL;
+            comando->argv[i+1] = NULL;
+            i++;
+            continue;
+        }
+    }
+}
 
 int arrange(char *buffer) {
 
