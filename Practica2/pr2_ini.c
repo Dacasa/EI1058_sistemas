@@ -107,7 +107,13 @@ void ejecuta_simple(struct comando *comando) {
         perror("Error en exec");
         exit(-1);
     } else{
-        wait(NULL);
+        int estado;
+        char aux[32];
+        wait(&estado);
+        estado &= 0x0000ff00;
+        estado = estado >> 8;
+        sprintf(aux,"%d",estado);
+        setenv("?", aux, 1);
     }
 }
 
@@ -136,7 +142,13 @@ void ejecuta_tub(int n_c, struct comando lista_comandos[]) {
             }
         }
     } else {  //el proceso principal no ejecuta ningun exec
-        wait(NULL);
+        int estado;
+        char aux[32];
+        wait(&estado);
+        estado &= 0x0000ff00;
+        estado = estado >> 8;
+        sprintf(aux,"%d",estado);
+        setenv("?", aux, 1);
     }
 }
 
@@ -288,6 +300,8 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
         j=0;
         while(lista_comandos[i].argv[j]) {
             printf("    comando[%d].argv[%d] (dir. %08lu) = #%s#\n", i, j,(unsigned long) (lista_comandos[i].argv[j]), lista_comandos[i].argv[j]);
+
+            //modificado para que compruebe el uso de variables de entorno y las sustituye
             if (contains_char(lista_comandos[i].argv[j], '$')) {   
                 char *var = getenv(lista_comandos[i].argv[j]+1); 
                 lista_comandos[i].argv[j] = var;
@@ -295,7 +309,6 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
             j++;
         }
     }
-    
     return(ncomandos);  /* Numero de componentes del vector lista_comandos 
                           (empezando a contar desde 1) */
 }

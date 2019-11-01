@@ -1,6 +1,8 @@
 #include <stdio.h>
 
 int main(){
-    printf("hola\n");
-    printf("cosas de casa\n");
+    int n = 25;
+    char x[64];
+    sprintf(x,"%d",n);
+    printf("%s\n",x);
 }
