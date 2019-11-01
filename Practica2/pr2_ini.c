@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
-
-#define PROMPT		    "\n=> "
 #define ESPACIO		    ' '
 
 #define MAX_BUF		    1024
 #define	MAX_ARGS	    32
 #define MAX_COMANDOS    10
+#define MAX_PATH        100
+#define MAX_USER        20
 
 struct comando{
     char *argv[MAX_ARGS];
@@ -26,10 +26,12 @@ struct comando{
 int arrange(char *buffer) ;
 int makeargs(char *buffer, char *args[]) ;
 int desglosar_tub (char *buffer, struct comando lista_comandos[]) ;
-void ejecuta_simple(struct comando lista_comandos[]);
+void ejecuta_simple(struct comando *comando);
 void ejecuta_tub(int n_c, struct comando lista_comandos[]);
 void redireccion_entrada(struct comando *comando);
 void redireccion_salida_error (struct comando *comando);
+void prompt(char *path, char *user);
+
 
 
 int main( int argc, char *argv[] ) {
@@ -38,37 +40,50 @@ int main( int argc, char *argv[] ) {
 
     char buffer[MAX_BUF], *args[MAX_ARGS];
     struct comando lista_comandos[MAX_COMANDOS];
+    char path[MAX_PATH];
+    getcwd(path, sizeof(path));
+    char user[MAX_USER];
+    getlogin_r(user, sizeof(user));
+
 
     puts("\nMinishell\n");
     while (1) {
-        printf(PROMPT);
+        prompt(path, user);
         if (fgets(buffer,  MAX_BUF, stdin) == NULL) 
             continue;
 
-        
         num_comandos = desglosar_tub(buffer, lista_comandos);
+
         printf("\n");
         if (num_comandos==1){
-            ejecuta_simple(lista_comandos);
+            if ( !strcmp(lista_comandos[0].argv[0], "cd") ) {    //si se trata de un cd
+                chdir(lista_comandos[0].argv[1]);
+                getcwd(path, sizeof(path));
+            } else {
+                ejecuta_simple(&lista_comandos[0]);     //comando simple
+            }
         } else {
-            ejecuta_tub(num_comandos, lista_comandos);
+            ejecuta_tub(num_comandos, lista_comandos);  //comando con tub
         }
 
     }// while(1) 
 }//main
 
-void ejecuta_simple(struct comando lista_comandos[]) {
+void prompt(char *path, char *user){
+    printf("\n%s@%s=>", user, path);
+}
+
+void ejecuta_simple(struct comando *comando) {
     if(fork()==0){
 
-        redireccion_entrada(&lista_comandos[0]);
-        redireccion_salida_error (&lista_comandos[0]);
-        
-        execvp(lista_comandos[0].argv[0], lista_comandos[0].argv);
+        redireccion_entrada(comando);
+        redireccion_salida_error (comando);
+
+        execvp(comando->argv[0], comando->argv);
         perror("Error en exec");
         exit(-1);
     } else{
         wait(NULL);
-
     }
 }
 
