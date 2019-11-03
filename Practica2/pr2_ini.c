@@ -1,4 +1,6 @@
 // David Castellano Sanchez
+//Practica 2
+
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -68,7 +70,6 @@ int main( int argc, char *argv[] ) {
                 printf("DONE\n");
                 exit(0);
             } else {
-
                 ejecuta_simple(&lista_comandos[0]);     //comando simple
             }
         } else {
@@ -78,9 +79,6 @@ int main( int argc, char *argv[] ) {
     }// while(1) 
 }//main
 
-void comprueba_variables(){
-    
-}
 
 int contains_char(char *st, char c){
     int i=0;
@@ -268,7 +266,7 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
     i=0;
 
     n=arrange(p1);
-    printf("Entrada: #%s#\n", buffer);//borrar
+    //printf("Entrada: #%s#\n", buffer);//borrar
 
     if (n==1) 
         return(0); /* No hay comandos, sino blancos o <CR> */
@@ -294,7 +292,7 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
     lista_comandos[ncomandos].nargs = makeargs(p1,lista_comandos[ncomandos].argv);
     ncomandos++; 
 
-    
+    /*
     for (i=0; i<ncomandos; i++) {
         printf("Comando %d (%d argumentos):\n",i,lista_comandos[i].nargs);
         j=0;
@@ -308,7 +306,7 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
             }
             j++;
         }
-    }
+    }*/
     return(ncomandos);  /* Numero de componentes del vector lista_comandos 
                           (empezando a contar desde 1) */
 }
