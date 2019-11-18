@@ -1,5 +1,5 @@
 // David Castellano Sanchez
-//Practica 2
+// Practica 2
 
 
 #include <stdio.h>
@@ -14,8 +14,8 @@
 #define MAX_BUF		    1024
 #define	MAX_ARGS	    32
 #define MAX_COMANDOS    10
-#define MAX_PATH        100
-#define MAX_USER        20
+#define MAX_PATH        256
+#define MAX_USER        64
 
 struct comando{
     char *argv[MAX_ARGS];
@@ -32,7 +32,6 @@ void ejecuta_simple(struct comando *comando);
 void ejecuta_tub(int n_c, struct comando lista_comandos[]);
 void redireccion_entrada(struct comando *comando);
 void redireccion_salida_error (struct comando *comando);
-void prompt(char *path, char *user);
 int contains_char(char *st, char c);
 void split_equals(char *buffer, char *s[]);
 
@@ -49,13 +48,14 @@ int main( int argc, char *argv[] ) {
     getlogin_r(user, sizeof(user));
 
 
-    puts("\nMinishell");
+    puts("\nMinishell\n");
     while (1) {
-        prompt(path, user);
+        printf("%s@%s=>", user, path);
         if (fgets(buffer,  MAX_BUF, stdin) == NULL) 
             continue;
 
         num_comandos = desglosar_tub(buffer, lista_comandos);
+        if(!num_comandos) continue;
 
         printf("\n");
         if (num_comandos==1){
@@ -75,7 +75,7 @@ int main( int argc, char *argv[] ) {
         } else {
             ejecuta_tub(num_comandos, lista_comandos);  //comando con tub
         }
-
+        printf("\n");
     }// while(1) 
 }//main
 
@@ -91,10 +91,6 @@ int contains_char(char *st, char c){
     return 0;
 }
 
-void prompt(char *path, char *user){
-    printf("\n%s@%s=>", user, path);
-}
-
 void ejecuta_simple(struct comando *comando) {
     if(fork()==0){
 
@@ -104,7 +100,7 @@ void ejecuta_simple(struct comando *comando) {
         execvp(comando->argv[0], comando->argv);
         perror("Error en exec");
         exit(-1);
-    } else{
+    } else{             //guardar el estado del comando
         int estado;
         char aux[32];
         wait(&estado);
@@ -150,7 +146,7 @@ void ejecuta_tub(int n_c, struct comando lista_comandos[]) {
     }
 }
 
-void redireccion_entrada(struct comando *comando) {
+void redireccion_entrada(struct comando *comando) {     //redirecciona la entrada en caso de que sea necesario
     int i;
     
     for (i=1 ; i< comando->nargs ; i++){
@@ -164,7 +160,7 @@ void redireccion_entrada(struct comando *comando) {
     }
 }
 
-void redireccion_salida_error (struct comando *comando) {
+void redireccion_salida_error (struct comando *comando) {       //redirecciona la salida o el error en caso de que sea necesario
     int i, fd;
     for (i=1 ; i< comando->nargs ; i++){
         if (comando->argv[i] == NULL) continue;
@@ -227,7 +223,7 @@ int arrange(char *buffer) {
  return(j);
 }
 
-void split_equals(char *buffer, char *s[]){
+void split_equals(char *buffer, char *s[]){ //separa VARIABLE=valor, para poder hacer uso de setenv()
     int i = 0;
     char *puntero;
 
@@ -292,12 +288,12 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
     lista_comandos[ncomandos].nargs = makeargs(p1,lista_comandos[ncomandos].argv);
     ncomandos++; 
 
-    /*
+    
     for (i=0; i<ncomandos; i++) {
-        printf("Comando %d (%d argumentos):\n",i,lista_comandos[i].nargs);
+        //printf("Comando %d (%d argumentos):\n",i,lista_comandos[i].nargs);
         j=0;
         while(lista_comandos[i].argv[j]) {
-            printf("    comando[%d].argv[%d] (dir. %08lu) = #%s#\n", i, j,(unsigned long) (lista_comandos[i].argv[j]), lista_comandos[i].argv[j]);
+            //printf("    comando[%d].argv[%d] (dir. %08lu) = #%s#\n", i, j,(unsigned long) (lista_comandos[i].argv[j]), lista_comandos[i].argv[j]);
 
             //modificado para que compruebe el uso de variables de entorno y las sustituye
             if (contains_char(lista_comandos[i].argv[j], '$')) {   
@@ -306,7 +302,7 @@ int desglosar_tub (char *buffer, struct comando lista_comandos[]) {
             }
             j++;
         }
-    }*/
+    }
     return(ncomandos);  /* Numero de componentes del vector lista_comandos 
                           (empezando a contar desde 1) */
 }
